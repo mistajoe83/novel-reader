@@ -1,0 +1,64 @@
+Performing Streamed Install
+Success
+Starting: Intent { cmp=com.joe.novelreader/.MainActivity }
+--- shot 01-launch
+--- shot 02-discover
+--- shot 03-discover-scrolled
+tap Browse -> 'Browse' at 678,2274
+--- shot 04-browse
+tap NovelBin -> 'NovelBin' at 271,579
+--- shot 05-novelbin
+tap first cover -> 'Shadow Slave' at 194,679
+--- shot 06-novel
+tap Add to library -> 'Add to library' at 293,2248
+--- shot 07-added
+tap Start reading -> 'Start reading' at 773,2248
+--- shot 08-reader
+--- shot 09-reader-controls
+tap Display -> 'Display' at 850,2231
+--- shot 10-reader-display
+tap Chapters -> 'Chapters' at 241,2231
+--- shot 11-reader-chapters
+--- shot 12-reader-scrolled
+--- shot 13-back-to-novel
+tap Download -> 'Download' at 880,191
+--- shot 14-download-menu
+tap Next 10 -> 'Next 10 chapters' at 749,338
+--- shot 15-downloading
+--- shot 16-after-back
+tap Library -> 'Library' at 127,2274
+--- shot 17-library
+tap More -> 'More' at 952,2274
+--- shot 18-more
+tap Network -> 'Network &amp; DNS' at 311,512
+--- shot 19-dns
+tap Test all -> 'Test all' at 946,1110
+--- shot 20-dns-tested
+tap Downloads -> 'Downloads' at 270,333
+--- shot 21-downloads
+tap Source health -> 'Source health &amp; fixes' at 367,1049
+--- shot 21b-health
+tap Test all sources -> 'Test all sources' at 672,774
+--- shot 21c-health-tested
+--- shot 21d-health-scrolled
+tap Discover -> 'Discover' at 403,2274
+tap Search all -> 'Search all sources' at 586,209
+--- shot 22-search
+tap Browse -> 'Browse' at 678,2274
+tap FreeWebNovel -> 'FreeWebNovel' at 325,820
+--- shot 23-fwn
+tap first cover -> 'Shadow Slave' at 194,679
+--- shot 24-fwn-novel
+tap Start reading -> 'Start reading' at 810,2248
+--- shot 25-fwn-reader
+tap Listen -> 'Listen' at 552,2231
+--- shot 26-tts
+tap Stop -> 'Stop' at 552,2231
+--- shot 27-back-novel
+tap More -> 'More' at 1006,191
+tap Switch source -> 'Switch source' at 804,716
+--- shot 28-switch
+tap Switch -> 'Switch' at 1006,1126
+--- shot 29-switch-confirm
+tap Switch -> 'Switch' at 809,1406
+--- shot 30-switched
