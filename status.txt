@@ -1,0 +1,7 @@
+commit=2d28c23386411c97940ae1579e4de9ab35d88b0d apk=success run=7
+total 2276
+drwxr-xr-x 3 runner runner    4096 Oct 23 04:13 .
+drwxr-xr-x 3 runner runner    4096 Oct 23 04:13 ..
+-rw-r--r-- 1 runner runner 2310408 Oct 23 04:13 app-release.apk
+drwxr-xr-x 4 runner runner    4096 Oct 23 04:13 baselineProfiles
+-rw-r--r-- 1 runner runner     709 Oct 23 04:13 output-metadata.json
