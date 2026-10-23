@@ -111,9 +111,13 @@ open class ReadNovelFullSource(
     }
 
     protected open fun parseDetails(doc: Document, path: String): NovelDetails {
-        val title = doc.selectFirst("h3.title, h1.tit, .books h3, .book h3, .col-info-desc h3, h1")?.text()?.trim()
-            ?: doc.selectFirst("meta[property=og:title]")?.attr("content").orEmpty()
         val img = doc.selectFirst(".book img, .books img, .m-imgtxt img, .pic img, .cover img")
+        val title = listOf(".col-info-desc h3.title", ".desc h3.title", "h3.title[itemprop=name]", "h1.tit", ".books h3.title")
+            .firstNotNullOfOrNull { doc.selectFirst(it)?.text()?.trim()?.ifBlank { null } }
+            ?: img?.attr("title")?.trim()?.ifBlank { null }
+            ?: img?.attr("alt")?.trim()?.ifBlank { null }
+            ?: doc.selectFirst("meta[property=og:title]")?.attr("content")?.trim()?.ifBlank { null }
+            ?: doc.selectFirst("h3.title, h1")?.text()?.trim().orEmpty()
         val cover = img?.let { pickImage(it) } ?: absoluteImage(doc.selectFirst("meta[property=og:image]")?.attr("content"))
         val descEl = doc.selectFirst("div.desc-text, .desc-text, .m-desc .txt .inner, .m-desc .inner, #tab-description, .summary")
         val description = HtmlText.plain(descEl)
@@ -157,7 +161,7 @@ open class ReadNovelFullSource(
             cover = cover,
             description = description,
             genres = genres.filter { it.isNotBlank() }.distinct(),
-            status = status?.replaceFirstChar { it.uppercase() },
+            status = status?.lowercase()?.replaceFirstChar { it.uppercase() },
             rating = rating?.let { if (it > 5f) it / 2f else it },
         )
     }

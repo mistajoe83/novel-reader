@@ -53,7 +53,9 @@ class ReadNovelFullComSource(env: HttpEnv) : ReadNovelFullSource(
     searchPath = "novel-list/search",
     chapterAjax = "ajax/chapter-archive",
     watermarkWords = listOf("readnovelfull"),
-)
+) {
+    override fun upgradeCover(url: String): String = url.replace(Regex("/thumb/t-\\d+x\\d+/"), "/thumb/t-300x439/")
+}
 
 class NovelFullSource(env: HttpEnv) : ReadNovelFullSource(
     env = env,
