@@ -1,6 +1,6 @@
 # NovelNest
 
-A personal Android web novel reader, styled after the WebNovel and Wuxiaworld apps, with no shop, coins or ads.
+A personal Android web novel reader (Android 8 or newer), styled after the WebNovel and Wuxiaworld apps, with no shop, coins or ads.
 
 **Install:** open https://github.com/mistajoe83/novel-reader/releases/latest on your phone, download the `.apk`, and open it. Allow "install unknown apps" for your browser when Android asks. New versions install over the old one and keep your library.
 
