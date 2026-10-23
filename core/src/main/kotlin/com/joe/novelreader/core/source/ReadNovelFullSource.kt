@@ -47,18 +47,18 @@ open class ReadNovelFullSource(
             "$baseUrl/$path${sep}page=$page"
         }
 
-    override suspend fun getListing(listing: Listing, page: Int): PageResult {
+    override suspend fun builtInListing(listing: Listing, page: Int): PageResult {
         if (page > 1 && listing.id in singlePage) return PageResult(emptyList(), false)
         val doc = getDoc(pageUrl(listing.id, page))
         return PageResult(parseList(doc), hasNext(doc, page) && listing.id !in singlePage)
     }
 
-    override suspend fun getGenre(genre: Genre, page: Int): PageResult {
+    override suspend fun builtInGenre(genre: Genre, page: Int): PageResult {
         val doc = getDoc(pageUrl(genre.id, page))
         return PageResult(parseList(doc), hasNext(doc, page))
     }
 
-    override suspend fun search(query: String, page: Int): PageResult {
+    override suspend fun builtInSearch(query: String, page: Int): PageResult {
         val q = URLEncoder.encode(query, "UTF-8")
         val doc = getDoc("$baseUrl/$searchPath?$searchKey=$q&page=$page")
         return PageResult(parseList(doc), hasNext(doc, page))
@@ -105,7 +105,7 @@ open class ReadNovelFullSource(
     /** List pages often use tiny thumbnails; ask for the full-size picture instead when the site allows it. */
     protected open fun upgradeCover(url: String): String = url
 
-    override suspend fun getDetails(path: String): NovelDetails {
+    override suspend fun builtInDetails(path: String): NovelDetails {
         val doc = getDoc(absoluteUrl(path))
         return parseDetails(doc, path)
     }
@@ -166,7 +166,7 @@ open class ReadNovelFullSource(
         )
     }
 
-    override suspend fun getChapters(path: String): List<ChapterInfo> {
+    override suspend fun builtInChapters(path: String): List<ChapterInfo> {
         val doc = getDoc(absoluteUrl(path))
         return chaptersFrom(doc, path)
     }
@@ -211,7 +211,7 @@ open class ReadNovelFullSource(
         return out
     }
 
-    override suspend fun getChapterText(path: String): ChapterText {
+    override suspend fun builtInChapterText(path: String): ChapterText {
         val doc = getDoc(absoluteUrl(path))
         doc.select("[class*=app-promo], [class*=unlock-buttons], div[class*=ads], div[id*=ads], .chr-nav, .chapter-nav").remove()
         val content = doc.selectFirst("#chr-content, #chapter-content, #article, .chapter-c, div.txt, .txt")

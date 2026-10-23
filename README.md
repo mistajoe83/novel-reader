@@ -11,4 +11,5 @@ A personal Android web novel reader, styled after the WebNovel and Wuxiaworld ap
 - Reader with themes, fonts, spacing, endless scrolling into the next chapter, volume-key paging and listen (text to speech)
 - Chapter downloads for offline reading, running in the background
 - In-app private DNS (DNS-over-HTTPS), default dns.adguard.com, with an ordered list of fallback servers. Only the app uses it; phone settings are untouched.
+- Source health & fixes: test every site, pass browser checks, change a site's address, switch a book to another site, and get fixes from [`sources/rules.json`](sources/rules.json) without a new app version. See [sources/README.md](sources/README.md).
 - Backup and restore to a file

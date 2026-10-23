@@ -35,8 +35,12 @@ class AppContainer(private val app: Application) {
     val store = ChapterStore(app)
     val repository = NovelRepository(db, sources, store)
     val downloads = DownloadManager(app)
+    val rules = com.joe.novelreader.data.RulesManager(app, network, sources)
 
     init {
+        scope.launch {
+            if (rules.shouldAutoCheck()) rules.refresh()
+        }
         scope.launch {
             settings.flow.map { it.dnsConfig }.distinctUntilChanged().drop(1).collect { network.onDnsChanged() }
         }

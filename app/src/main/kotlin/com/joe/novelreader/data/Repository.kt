@@ -246,6 +246,54 @@ class NovelRepository(
     suspend fun readGenres(): List<String> = novels.readGenres().flatMap { it.split('|') }.map { it.trim() }.filter { it.isNotEmpty() }
     suspend fun knownPaths(): Set<String> = novels.knownPaths().toHashSet()
 
+    /**
+     * Moves a book to another source: library place, reading progress, read marks and bookmarks
+     * come along. Chapters are matched by their number (or position when there is no number).
+     * Returns the new book's id.
+     */
+    suspend fun migrate(oldId: String, newSourceId: String, newPath: String, title: String, cover: String?): String = withContext(Dispatchers.IO) {
+        val old = novels.get(oldId) ?: error("Book not found")
+        val newId = ensureNovel(newSourceId, newPath, title, cover)
+        if (newId == oldId) return@withContext newId
+        val src = sources.require(newSourceId)
+        val fresh = novels.get(newId)!!
+        saveDetails(fresh, src.getDetails(newPath))
+        syncChapters(newId, src)
+        val oldChapters = chapters.list(oldId)
+        val newChapters = chapters.list(newId)
+        if (newChapters.isEmpty()) error("${src.name} has no chapters for this book.")
+
+        val byNumber = HashMap<Int, ChapterEntity>()
+        newChapters.forEach { c -> chapterNumber(c.name)?.let { byNumber.putIfAbsent(it, c) } }
+        fun match(c: ChapterEntity): ChapterEntity? =
+            chapterNumber(c.name)?.let { byNumber[it] } ?: newChapters.getOrNull(c.idx)
+
+        val readIds = oldChapters.filter { it.read }.mapNotNull { match(it)?.id }
+        if (readIds.isNotEmpty()) setRead(readIds, true)
+        val lastOld = old.lastReadChapterId?.let { id -> oldChapters.firstOrNull { it.id == id } }
+        val lastNew = lastOld?.let { match(it) }
+        if (lastOld != null && lastNew != null) {
+            chapters.setProgress(lastNew.id, 0, lastOld.progress, lastNew.read)
+            novels.setLastRead(newId, lastNew.id, lastNew.name, maxOf(old.lastReadAt, 1))
+        }
+        val marks = db.bookmarks().forNovel(oldId)
+        marks.forEach { b ->
+            val ch = oldChapters.firstOrNull { it.id == b.chapterId }?.let { match(it) } ?: return@forEach
+            db.bookmarks().add(b.copy(id = 0, novelId = newId, chapterId = ch.id, chapterName = ch.name))
+        }
+        if (marks.isNotEmpty()) db.bookmarks().deleteForNovel(oldId)
+        if (old.inLibrary) {
+            novels.setInLibrary(newId, true, old.addedAt.takeIf { it > 0 } ?: System.currentTimeMillis())
+            novels.setInLibrary(oldId, false, 0)
+        }
+        novels.clearHistory(oldId)
+        newId
+    }
+
+    private fun chapterNumber(name: String): Int? =
+        Regex("""(?i)(?:chapter|ch\.?|episode|ep\.?)\s*(\d+)""").find(name)?.groupValues?.get(1)?.toIntOrNull()
+            ?: Regex("""^\s*(\d+)""").find(name)?.groupValues?.get(1)?.toIntOrNull()
+
     fun observeBookmarks() = db.bookmarks().observeAll()
     fun observeChapterBookmarks(chapterId: String) = db.bookmarks().observeForChapter(chapterId)
     suspend fun addBookmark(b: BookmarkEntity) = db.bookmarks().add(b)

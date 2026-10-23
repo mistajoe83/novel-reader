@@ -232,7 +232,7 @@ fun NovelScreen(novelId: String) {
                 Column(Modifier.padding(horizontal = 16.dp)) {
                     if (vm.refreshing && list.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth().padding(vertical = 8.dp))
                     vm.error?.let { e ->
-                        ErrorBox(e, webUrl = n?.let { source?.absoluteUrl(it.path) }) { vm.refresh() }
+                        ErrorBox(e, webUrl = n?.let { source?.absoluteUrl(it.path) }, onSwitchSource = { nav.open("migrate/" + android.net.Uri.encode(novelId)) }) { vm.refresh() }
                     }
                     if (!n?.genreList.isNullOrEmpty()) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
@@ -343,6 +343,7 @@ fun NovelScreen(novelId: String) {
                     )
                     DropdownMenuItem(text = { Text("Mark all as read") }, onClick = { moreMenu = false; vm.setRead(list, true) })
                     DropdownMenuItem(text = { Text("Mark all as unread") }, onClick = { moreMenu = false; vm.setRead(list, false) })
+                    DropdownMenuItem(text = { Text("Switch source") }, onClick = { moreMenu = false; nav.open("migrate/" + android.net.Uri.encode(novelId)) })
                     DropdownMenuItem(text = { Text("Search other sources") }, onClick = { moreMenu = false; n?.let { nav.openSearch(it.title) } })
                 }
             }

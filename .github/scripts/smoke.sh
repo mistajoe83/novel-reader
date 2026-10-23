@@ -59,6 +59,13 @@ back
 $UI text Downloads --at 540 300
 shot 21-downloads 3
 back
+$UI contains "Source health" --at 540 420
+shot 21b-health 3
+$UI contains "Test all sources" --at 700 760
+shot 21c-health-tested 45
+adb shell input swipe 540 1800 540 600 400
+shot 21d-health-scrolled 3
+back
 $UI text Discover --at 400 2210
 sleep 2
 $UI contains "Search all" --at 700 210
@@ -80,6 +87,17 @@ adb shell input tap 540 1300
 sleep 2
 $UI text Listen --at 540 2250
 shot 26-tts 8
+$UI text Stop --at 540 2250
+back
+shot 27-back-novel 3
+$UI text More --at 1006 191
+sleep 2
+$UI text "Switch source" --at 800 300
+shot 28-switch 30
+$UI text Switch --at 1000 900
+shot 29-switch-confirm 3
+$UI text Switch --at 900 1500
+shot 30-switched 20
 
 adb logcat -d > "$OUT/logcat-full.txt"
 grep -E "AndroidRuntime: (FATAL|Process|java|Caused|\s+at )|$PKG|System.err" "$OUT/logcat-full.txt" | grep -v uiautomator | tail -400 > "$OUT/logcat-app.txt"

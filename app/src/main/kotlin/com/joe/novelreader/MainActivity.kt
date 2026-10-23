@@ -224,6 +224,10 @@ private fun AppRoot() {
                 composable("settings/sources") { SourcesSettingsScreen() }
                 composable("settings/backup") { BackupScreen() }
                 composable("settings/about") { AboutScreen() }
+                composable("settings/health") { com.joe.novelreader.ui.fix.SourceHealthScreen() }
+                composable("migrate/{novelId}", arguments = listOf(navArgument("novelId") { type = NavType.StringType })) { e ->
+                    com.joe.novelreader.ui.fix.MigrateScreen(e.arguments?.getString("novelId").orEmpty())
+                }
             }
         }
     }

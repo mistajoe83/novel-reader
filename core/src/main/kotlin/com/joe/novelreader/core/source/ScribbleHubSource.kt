@@ -36,7 +36,7 @@ class ScribbleHubSource(env: HttpEnv) : NovelSource(env) {
         "Fanfiction" to "38",
     ).map { Genre(it.first, it.second) }
 
-    override suspend fun getListing(listing: Listing, page: Int): PageResult {
+    override suspend fun builtInListing(listing: Listing, page: Int): PageResult {
         val url = if (listing.id == "latest") "$baseUrl/latest-series/?pg=$page"
         else "$baseUrl/series-finder/?sf=1&sort=${listing.id}&order=desc&pg=$page"
         val doc = getDoc(url)
@@ -44,13 +44,13 @@ class ScribbleHubSource(env: HttpEnv) : NovelSource(env) {
         return PageResult(items, items.isNotEmpty() && hasNext(doc, page))
     }
 
-    override suspend fun getGenre(genre: Genre, page: Int): PageResult {
+    override suspend fun builtInGenre(genre: Genre, page: Int): PageResult {
         val doc = getDoc("$baseUrl/series-finder/?sf=1&gi=${genre.id}&mgi=and&sort=ratings&order=desc&pg=$page")
         val items = parseList(doc)
         return PageResult(items, items.isNotEmpty() && hasNext(doc, page))
     }
 
-    override suspend fun search(query: String, page: Int): PageResult {
+    override suspend fun builtInSearch(query: String, page: Int): PageResult {
         if (page > 1) return PageResult(emptyList(), false)
         val doc = getDoc("$baseUrl/?s=${SourceCatalog.enc(query)}&post_type=fictionposts")
         return PageResult(parseList(doc), false)
@@ -72,7 +72,7 @@ class ScribbleHubSource(env: HttpEnv) : NovelSource(env) {
         }
     }
 
-    override suspend fun getDetails(path: String): NovelDetails {
+    override suspend fun builtInDetails(path: String): NovelDetails {
         val doc = getDoc(absoluteUrl(path))
         val status = doc.select(".rnd_stats").firstOrNull()?.nextElementSibling()?.text().orEmpty()
         val widget = doc.select(".widget_fic_similar li, span.rnd_stats + span").text()
@@ -95,7 +95,7 @@ class ScribbleHubSource(env: HttpEnv) : NovelSource(env) {
         )
     }
 
-    override suspend fun getChapters(path: String): List<ChapterInfo> {
+    override suspend fun builtInChapters(path: String): List<ChapterInfo> {
         val postId = path.trim('/').split('/').getOrNull(1)
             ?: throw IllegalStateException("Couldn't read this novel's id")
         val body = MultipartBody.Builder().setType(MultipartBody.FORM)
@@ -112,7 +112,7 @@ class ScribbleHubSource(env: HttpEnv) : NovelSource(env) {
         return list.mapIndexed { i, (p, n, d) -> ChapterInfo(p, n.ifBlank { "Chapter ${i + 1}" }, i, d) }
     }
 
-    override suspend fun getChapterText(path: String): ChapterText {
+    override suspend fun builtInChapterText(path: String): ChapterText {
         val doc = getDoc(absoluteUrl(path))
         val content = doc.selectFirst("div.chp_raw, #chp_raw") ?: throw IllegalStateException("Couldn't find the chapter text on this page.")
         content.select(".wi_authornotes, .modern-footnotes-footnote__note").remove()

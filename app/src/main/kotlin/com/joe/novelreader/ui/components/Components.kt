@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
@@ -276,6 +277,7 @@ fun ErrorBox(
     error: Throwable,
     modifier: Modifier = Modifier,
     webUrl: String? = null,
+    onSwitchSource: (() -> Unit)? = null,
     onRetry: () -> Unit,
 ) {
     val nav = LocalNav.current
@@ -298,6 +300,10 @@ fun ErrorBox(
                     Text("Open in browser")
                 }
             }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (onSwitchSource != null && cf == null) TextButton(onClick = onSwitchSource) { Text("Switch source") }
+            if (cf == null) TextButton(onClick = { nav.open("settings/health") }) { Text("Source health") }
         }
     }
 }

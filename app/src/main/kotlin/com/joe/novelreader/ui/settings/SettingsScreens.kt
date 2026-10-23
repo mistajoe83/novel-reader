@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Palette
@@ -137,6 +138,7 @@ fun MoreScreen() {
         MenuRow(Icons.Filled.Dns, "Network & DNS", if (s.dnsEnabled) "Private DNS on · ${s.dnsServers.firstOrNull()?.let { Uri.parse(it).host } ?: "none"}" else "Using phone DNS") { nav.open("settings/dns") }
         MenuRow(Icons.Filled.FormatSize, "Reading", "Theme, font, spacing, listen speed") { nav.open("settings/reader") }
         MenuRow(Icons.Filled.Palette, "Appearance", when (s.themeMode) { ThemeMode.SYSTEM -> "Follow phone"; ThemeMode.LIGHT -> "Light"; ThemeMode.DARK -> "Dark" }) { nav.open("settings/appearance") }
+        MenuRow(Icons.Filled.HealthAndSafety, "Source health & fixes", "Test sources, get fixes, pass site checks") { nav.open("settings/health") }
         MenuRow(Icons.Filled.Extension, "Sources", "${c.sources.all.size - s.disabledSources.size} of ${c.sources.all.size} on · change site addresses") { nav.open("settings/sources") }
         MenuRow(Icons.Filled.Backup, "Backup & restore", "Save your library to a file") { nav.open("settings/backup") }
         MenuRow(Icons.Filled.Info, "About", "NovelNest ${BuildConfig.VERSION_NAME}") { nav.open("settings/about") }

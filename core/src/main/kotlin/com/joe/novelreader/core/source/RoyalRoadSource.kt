@@ -44,17 +44,17 @@ class RoyalRoadSource(env: HttpEnv) : NovelSource(env) {
         "Female Lead" to "female_lead", "Male Lead" to "male_lead", "Grimdark" to "grimdark", "Harem" to "harem",
     ).map { Genre(it.first, it.second) }
 
-    override suspend fun getListing(listing: Listing, page: Int): PageResult {
+    override suspend fun builtInListing(listing: Listing, page: Int): PageResult {
         val doc = getDoc("$baseUrl/${listing.id}?page=$page")
         return PageResult(parseList(doc), hasNext(doc, page))
     }
 
-    override suspend fun getGenre(genre: Genre, page: Int): PageResult {
+    override suspend fun builtInGenre(genre: Genre, page: Int): PageResult {
         val doc = getDoc("$baseUrl/fictions/search?tagsAdd=${genre.id}&orderBy=popularity&page=$page")
         return PageResult(parseList(doc), hasNext(doc, page))
     }
 
-    override suspend fun search(query: String, page: Int): PageResult {
+    override suspend fun builtInSearch(query: String, page: Int): PageResult {
         val doc = getDoc("$baseUrl/fictions/search?title=${SourceCatalog.enc(query)}&page=$page")
         return PageResult(parseList(doc), hasNext(doc, page))
     }
@@ -78,7 +78,7 @@ class RoyalRoadSource(env: HttpEnv) : NovelSource(env) {
         }
     }
 
-    override suspend fun getDetails(path: String): NovelDetails {
+    override suspend fun builtInDetails(path: String): NovelDetails {
         val doc = getDoc(absoluteUrl(path))
         val labels = doc.select(".fiction-info span.label, .fiction-info .label-sm").map { it.text().trim().uppercase() }
         val status = labels.firstOrNull { it in setOf("ONGOING", "COMPLETED", "HIATUS", "STUB", "DROPPED", "INACTIVE") }
@@ -97,7 +97,7 @@ class RoyalRoadSource(env: HttpEnv) : NovelSource(env) {
         )
     }
 
-    override suspend fun getChapters(path: String): List<ChapterInfo> {
+    override suspend fun builtInChapters(path: String): List<ChapterInfo> {
         val doc = getDoc(absoluteUrl(path))
         val script = doc.select("script").map { it.data() }.firstOrNull { it.contains("window.chapters") }
         if (script != null) {
@@ -128,7 +128,7 @@ class RoyalRoadSource(env: HttpEnv) : NovelSource(env) {
         }
     }
 
-    override suspend fun getChapterText(path: String): ChapterText {
+    override suspend fun builtInChapterText(path: String): ChapterText {
         val doc = getDoc(absoluteUrl(path))
         // Royal Road hides "stolen from Royal Road" lines with CSS classes that make them invisible.
         val css = doc.select("style").joinToString("\n") { it.data() }

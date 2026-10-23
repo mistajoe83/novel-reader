@@ -59,18 +59,18 @@ class NovelFireSource(env: HttpEnv) : NovelSource(env) {
         return "$baseUrl/search-adv?" + p.joinToString("&") { (k, v) -> "${SourceCatalog.enc(k)}=${SourceCatalog.enc(v)}" }
     }
 
-    override suspend fun getListing(listing: Listing, page: Int): PageResult {
+    override suspend fun builtInListing(listing: Listing, page: Int): PageResult {
         val url = if (listing.id == "completed") advUrl("rank-top", page, status = "1") else advUrl(listing.id, page)
         val doc = getDoc(url)
         return PageResult(parseItems(doc, ".novel-item"), hasNext(doc))
     }
 
-    override suspend fun getGenre(genre: Genre, page: Int): PageResult {
+    override suspend fun builtInGenre(genre: Genre, page: Int): PageResult {
         val doc = getDoc(advUrl("rank-top", page, genre.id))
         return PageResult(parseItems(doc, ".novel-item"), hasNext(doc))
     }
 
-    override suspend fun search(query: String, page: Int): PageResult {
+    override suspend fun builtInSearch(query: String, page: Int): PageResult {
         val doc = getDoc("$baseUrl/search?keyword=${SourceCatalog.enc(query)}&page=$page")
         var items = parseItems(doc, ".novel-list.chapters .novel-item")
         if (items.isEmpty()) items = parseItems(doc, ".novel-item")
@@ -100,7 +100,7 @@ class NovelFireSource(env: HttpEnv) : NovelSource(env) {
         listOf("data-src", "data-original", "src").map { img.attr(it) }.firstOrNull { it.isNotBlank() && !it.startsWith("data:") },
     )
 
-    override suspend fun getDetails(path: String): NovelDetails {
+    override suspend fun builtInDetails(path: String): NovelDetails {
         val doc = getDoc(absoluteUrl(path))
         val title = doc.selectFirst(".novel-title")?.text()?.trim()
             ?: doc.selectFirst(".cover > img")?.attr("alt").orEmpty()
@@ -121,7 +121,7 @@ class NovelFireSource(env: HttpEnv) : NovelSource(env) {
         )
     }
 
-    override suspend fun getChapters(path: String): List<ChapterInfo> {
+    override suspend fun builtInChapters(path: String): List<ChapterInfo> {
         val doc = getDoc(absoluteUrl(path))
         val postId = doc.selectFirst("#novel-report")?.attr("report-post_id")?.ifBlank { null }
         val clean = path.trimEnd('/')
@@ -187,7 +187,7 @@ class NovelFireSource(env: HttpEnv) : NovelSource(env) {
         }
     }
 
-    override suspend fun getChapterText(path: String): ChapterText {
+    override suspend fun builtInChapterText(path: String): ChapterText {
         val doc = getDoc(absoluteUrl(path))
         val content = doc.selectFirst("#content") ?: throw IllegalStateException("Couldn't find the chapter text on this page.")
         // The site sprinkles made-up tags (like <nfxyz>) with junk text into chapters.

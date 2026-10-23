@@ -227,6 +227,12 @@ interface BookmarkDao {
 
     @Query("SELECT * FROM bookmarks")
     suspend fun all(): List<BookmarkEntity>
+
+    @Query("SELECT * FROM bookmarks WHERE novelId = :novelId")
+    suspend fun forNovel(novelId: String): List<BookmarkEntity>
+
+    @Query("DELETE FROM bookmarks WHERE novelId = :novelId")
+    suspend fun deleteForNovel(novelId: String)
 }
 
 @Dao

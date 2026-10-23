@@ -5,6 +5,7 @@ import com.joe.novelreader.core.model.ChapterText
 import com.joe.novelreader.core.model.Genre
 import com.joe.novelreader.core.model.Listing
 import com.joe.novelreader.core.model.NovelDetails
+import com.joe.novelreader.core.model.NovelItem
 import com.joe.novelreader.core.model.PageResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,6 +35,9 @@ class HttpEnv(
 class CloudflareException(val url: String) :
     IOException("This site is checking your browser. Open it in the in-app browser once, then try again.")
 
+class SourceDisabledException(name: String, notice: String?) :
+    IOException(notice?.ifBlank { null } ?: "$name is switched off for now.")
+
 class HttpStatusException(val code: Int, val url: String) :
     IOException(
         when (code) {
@@ -51,23 +55,174 @@ abstract class NovelSource(protected val env: HttpEnv) {
     open val language: String = "English"
     open val description: String = ""
 
-    /** Can be changed in settings when a site moves to a new domain. */
+    /** Address typed by the user in settings. Wins over everything else. */
     @Volatile
-    var baseUrl: String = ""
-        get() = field.ifBlank { defaultBaseUrl }
+    var userBaseUrl: String = ""
         set(value) {
             field = value.trim().trimEnd('/')
+        }
+
+    /** Fixes downloaded from GitHub or typed on the phone. */
+    @Volatile
+    var rules: SourceRules = SourceRules()
+
+    /** Kept for older callers: setting it sets the user's own address. */
+    var baseUrl: String
+        get() = userBaseUrl.ifBlank { rules.baseUrl?.trim()?.trimEnd('/')?.ifBlank { null } ?: defaultBaseUrl }
+        set(value) {
+            userBaseUrl = value
         }
 
     abstract val listings: List<Listing>
     open val genres: List<Genre> = emptyList()
 
-    abstract suspend fun getListing(listing: Listing, page: Int): PageResult
-    open suspend fun getGenre(genre: Genre, page: Int): PageResult = PageResult(emptyList(), false)
-    abstract suspend fun search(query: String, page: Int): PageResult
-    abstract suspend fun getDetails(path: String): NovelDetails
-    abstract suspend fun getChapters(path: String): List<ChapterInfo>
-    abstract suspend fun getChapterText(path: String): ChapterText
+    protected abstract suspend fun builtInListing(listing: Listing, page: Int): PageResult
+    protected open suspend fun builtInGenre(genre: Genre, page: Int): PageResult = PageResult(emptyList(), false)
+    protected abstract suspend fun builtInSearch(query: String, page: Int): PageResult
+    protected abstract suspend fun builtInDetails(path: String): NovelDetails
+    protected abstract suspend fun builtInChapters(path: String): List<ChapterInfo>
+    protected abstract suspend fun builtInChapterText(path: String): ChapterText
+
+    // ---- Public entry points: built-in code, with the rules applied on top. ----
+
+    private fun checkEnabled() {
+        if (rules.disabled) throw SourceDisabledException(name, rules.notice)
+    }
+
+    suspend fun getListing(listing: Listing, page: Int): PageResult {
+        checkEnabled()
+        val url = rules.urls.listing
+        val r = if (url != null && rules.list != null) {
+            ruleList(fill(url, page = page, listing = listing.id))
+        } else {
+            builtInListing(listing, page)
+        }
+        return fixList(r)
+    }
+
+    suspend fun getGenre(genre: Genre, page: Int): PageResult {
+        checkEnabled()
+        val url = rules.urls.genre
+        val r = if (url != null && rules.list != null) ruleList(fill(url, page = page, genre = genre.id)) else builtInGenre(genre, page)
+        return fixList(r)
+    }
+
+    suspend fun search(query: String, page: Int): PageResult {
+        checkEnabled()
+        val url = rules.urls.search
+        val r = if (url != null && rules.list != null) {
+            ruleList(fill(url, page = page, query = java.net.URLEncoder.encode(query, "UTF-8")))
+        } else {
+            builtInSearch(query, page)
+        }
+        return fixList(r)
+    }
+
+    suspend fun getDetails(path: String): NovelDetails {
+        checkEnabled()
+        val dr = rules.details
+        if (dr == null) return builtInDetails(path).let { it.copy(cover = it.cover?.let(::rewriteCover)) }
+        val builtIn = try { builtInDetails(path) } catch (e: CloudflareException) { throw e } catch (_: Exception) { null }
+        val doc = getDoc(rules.urls.details?.let { fill(it, path = path) } ?: absoluteUrl(path))
+        fun text(sel: String?) = sel?.let { doc.selectFirst(it) }?.let { it.attr("content").ifBlank { it.text() } }?.trim()?.ifBlank { null }
+        val d = NovelDetails(
+            sourceId = id,
+            path = path,
+            title = text(dr.title) ?: builtIn?.title ?: "",
+            author = text(dr.author) ?: builtIn?.author,
+            cover = dr.cover?.let { doc.selectFirst(it) }?.let { imageOf(it) } ?: builtIn?.cover,
+            description = dr.description?.let { com.joe.novelreader.core.util.HtmlText.plain(doc.selectFirst(it)) } ?: builtIn?.description,
+            genres = dr.genres?.let { s -> doc.select(s).map { it.text().trim() }.filter { it.isNotEmpty() }.distinct() }?.ifEmpty { null }
+                ?: builtIn?.genres.orEmpty(),
+            status = text(dr.status) ?: builtIn?.status,
+            rating = builtIn?.rating,
+        )
+        return d.copy(cover = d.cover?.let(::rewriteCover))
+    }
+
+    suspend fun getChapters(path: String): List<ChapterInfo> {
+        checkEnabled()
+        val cr = rules.chapters ?: return builtInChapters(path)
+        val doc = getDoc(rules.urls.chapters?.let { fill(it, path = path) } ?: absoluteUrl(path))
+        var nodes = doc.select(cr.item).toList()
+        if (cr.reversed) nodes = nodes.reversed()
+        val seen = HashSet<String>()
+        val out = mutableListOf<ChapterInfo>()
+        for (n in nodes) {
+            val a = if (n.hasAttr("href")) n else n.selectFirst("a[href]") ?: continue
+            val p = toPath(a.attr("abs:href").ifBlank { a.attr("href") })
+            if (!seen.add(p)) continue
+            val nm = (cr.name?.let { n.selectFirst(it)?.text() } ?: a.attr("title").ifBlank { a.text() }).trim()
+            out += ChapterInfo(p, nm.ifBlank { "Chapter ${out.size + 1}" }, out.size)
+        }
+        if (out.isEmpty()) throw IllegalStateException("The chapter list rule found no chapters.")
+        return out
+    }
+
+    suspend fun getChapterText(path: String): ChapterText {
+        checkEnabled()
+        val cr = rules.chapter
+        val text = if (cr?.content != null) {
+            val doc = getDoc(absoluteUrl(path))
+            cr.remove.forEach { runCatching { doc.select(it).remove() } }
+            val content = doc.selectFirst(cr.content)
+                ?: throw IllegalStateException("Couldn't find the chapter text (rule: ${cr.content}).")
+            val title = cr.title?.let { doc.selectFirst(it)?.text()?.trim() }
+            ChapterText(title, com.joe.novelreader.core.util.HtmlText.paragraphs(content, com.joe.novelreader.core.util.HtmlText.COMMON_JUNK))
+        } else {
+            builtInChapterText(path)
+        }
+        val drops = cr?.dropParagraphs.orEmpty().mapNotNull { runCatching { Regex(it, RegexOption.IGNORE_CASE) }.getOrNull() }
+        val paragraphs = if (drops.isEmpty()) text.paragraphs else text.paragraphs.filter { p -> drops.none { it.containsMatchIn(p) } }
+        if (paragraphs.isEmpty()) throw IllegalStateException("This chapter came back empty.")
+        return text.copy(paragraphs = paragraphs)
+    }
+
+    private fun fill(template: String, page: Int = 1, query: String = "", listing: String = "", genre: String = "", path: String = ""): String =
+        template.replace("{base}", baseUrl)
+            .replace("{page}", page.toString())
+            .replace("{query}", query)
+            .replace("{listing}", listing)
+            .replace("{genre}", genre)
+            .replace("{path}", path)
+            .replace("{slug}", path.trim('/').substringAfterLast('/').removeSuffix(".html"))
+            .let { if (it.startsWith("/")) baseUrl + it else it }
+
+    private suspend fun ruleList(url: String): PageResult {
+        val lr = rules.list!!
+        val doc = getDoc(url)
+        val seen = HashSet<String>()
+        val out = mutableListOf<NovelItem>()
+        for (item in doc.select(lr.item)) {
+            val a = (lr.link?.let { item.selectFirst(it) } ?: if (item.hasAttr("href")) item else item.selectFirst("a[href]")) ?: continue
+            val p = toPath(a.attr("abs:href").ifBlank { a.attr("href") })
+            if (p == "/" || !seen.add(p)) continue
+            val title = (lr.title?.let { item.selectFirst(it)?.text() } ?: a.attr("title").ifBlank { a.text() }).trim()
+            if (title.isBlank()) continue
+            val img = (lr.cover?.let { item.selectFirst(it) } ?: item.selectFirst("img"))
+            out += NovelItem(id, p, title, img?.let { imageOf(it) }, lr.subtitle?.let { item.selectFirst(it)?.text()?.trim() })
+        }
+        val next = lr.next?.let { doc.selectFirst(it) != null } ?: out.isNotEmpty()
+        return PageResult(out, next)
+    }
+
+    private fun imageOf(el: org.jsoup.nodes.Element): String? {
+        val src = listOf("data-src", "data-original", "data-lazy-src", "src", "content", "href")
+            .map { el.attr("abs:$it").ifBlank { el.attr(it) } }
+            .firstOrNull { it.isNotBlank() && !it.startsWith("data:") }
+        return absoluteImage(src)
+    }
+
+    private fun fixList(r: PageResult): PageResult =
+        if (rules.coverRewrite.isEmpty()) r else r.copy(novels = r.novels.map { it.copy(cover = it.cover?.let(::rewriteCover)) })
+
+    fun rewriteCover(url: String): String {
+        var u = url
+        for (rw in rules.coverRewrite) {
+            u = runCatching { Regex(rw.from).replace(u, rw.to) }.getOrDefault(u)
+        }
+        return u
+    }
 
     /** Turns a stored path back into a full web address. */
     fun absoluteUrl(path: String): String = when {
@@ -98,6 +253,7 @@ abstract class NovelSource(protected val env: HttpEnv) {
             .add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
             .add("Accept-Language", "en-US,en;q=0.9")
             .add("Referer", "$baseUrl/")
+        rules.headers.forEach { (k, v) -> b.set(k, v) }
         extra.forEach { (k, v) -> b.set(k, v) }
         return b.build()
     }
