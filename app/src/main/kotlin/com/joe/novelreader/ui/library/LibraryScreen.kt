@@ -31,7 +31,7 @@ import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.LibraryBooks
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -156,7 +156,7 @@ private fun LibraryPage() {
         PullToRefreshBox(isRefreshing = refreshing, onRefresh = { refresh() }, modifier = Modifier.fillMaxSize()) {
             if (library != null && sorted.isEmpty()) {
                 Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    EmptyBox("Your library is empty.\nFind something to read in Discover, then tap \"Add to library\".", icon = Icons.Filled.LibraryBooks)
+                    EmptyBox("Your library is empty.\nFind something to read in Discover, then tap \"Add to library\".", icon = Icons.AutoMirrored.Filled.LibraryBooks)
                     Button(onClick = { nav.open("discover") }) { Text("Go to Discover") }
                 }
                 return@PullToRefreshBox

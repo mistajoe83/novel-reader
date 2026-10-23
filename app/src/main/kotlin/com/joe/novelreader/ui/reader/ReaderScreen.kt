@@ -180,13 +180,14 @@ fun ReaderScreen(novelId: String, chapterId: String?, paragraph: Int?) {
         onDispose { view.keepScreenOn = false }
     }
     DisposableEffect(settings.volumeKeysScroll) {
-        ReaderKeys.handler = if (!settings.volumeKeysScroll) null else { up ->
+        val handler: (Boolean) -> Boolean = { up ->
             scope.launch {
                 val h = listState.layoutInfo.viewportSize.height * 0.85f
                 listState.animateScrollBy(if (up) -h else h)
             }
             true
         }
+        ReaderKeys.handler = if (settings.volumeKeysScroll) handler else null
         onDispose { ReaderKeys.handler = null }
     }
 

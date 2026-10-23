@@ -71,6 +71,19 @@ class LiveSourcesTest {
             step("genre '${g.name}'") { val r = s.getGenre(g, 1); "${r.novels.size} novels, next=${r.hasNextPage}" to Unit }
         }
         step("search 'martial'") { val r = s.search("martial", 1); "${r.novels.size} results: ${r.novels.take(3).map { it.title }}" to Unit }
+        for (n in list.take(2)) {
+            step("cover ${n.cover}") {
+                val url = n.cover ?: return@step "no cover" to Unit
+                val withRef = coverStatus(url, s.baseUrl + "/")
+                val noRef = coverStatus(url, null)
+                "with referer: $withRef | without: $noRef" to Unit
+            }
+        }
+        step("raw list images") {
+            val html = client.newCall(okhttp3.Request.Builder().url(s.baseUrl).header("User-Agent", com.joe.novelreader.core.source.HttpEnv.DEFAULT_UA).build()).execute().use { it.body?.string().orEmpty() }
+            val imgs = Regex("<img[^>]{0,400}>").findAll(html).map { it.value }.filter { !it.contains("logo", true) }.take(4).toList()
+            imgs.joinToString("\n    ") to Unit
+        }
         val novel = list.firstOrNull() ?: return
         step("details ${novel.path}") {
             val d = s.getDetails(novel.path)
@@ -85,6 +98,14 @@ class LiveSourcesTest {
             val t = s.getChapterText(ch.path)
             "title='${t.title}' paragraphs=${t.paragraphs.size} chars=${t.paragraphs.sumOf { it.length }} start='${t.paragraphs.take(3).joinToString(" / ").take(300)}' end='${t.paragraphs.takeLast(2).joinToString(" / ").take(200)}'" to Unit
         }
+    }
+
+    private fun coverStatus(url: String, referer: String?): String = try {
+        val b = okhttp3.Request.Builder().url(url).header("User-Agent", com.joe.novelreader.core.source.HttpEnv.DEFAULT_UA)
+        if (referer != null) b.header("Referer", referer)
+        client.newCall(b.build()).execute().use { r -> "${r.code} ${r.header("Content-Type")} ${r.body?.bytes()?.size ?: 0}b" }
+    } catch (e: Exception) {
+        "error ${e.javaClass.simpleName}: ${e.message}"
     }
 
     private suspend fun <T> step(name: String, block: suspend () -> Pair<String, T>): T? = try {

@@ -29,10 +29,21 @@ def nodes():
 def tap(x, y):
     adb("shell", "input", "tap", str(x), str(y))
 
+FALLBACK = None
+
 def tap_match(pred, label, index=0):
-    found = [n for n in nodes() if pred(n)]
+    all_nodes = nodes()
+    found = [n for n in all_nodes if pred(n)]
     if len(found) <= index:
-        print(f"NOT FOUND: {label}")
+        print(f"NOT FOUND: {label} (screen has {len(all_nodes)} nodes)")
+        with open("shots/ui-dumps.txt", "a") as f:
+            f.write(f"\n===== looking for {label}\n")
+            for n in all_nodes:
+                if n[0] or n[1]:
+                    f.write(repr(n) + "\n")
+        if FALLBACK:
+            print(f"fallback tap at {FALLBACK}")
+            tap(*FALLBACK)
         return False
     t, d, x1, y1, x2, y2 = found[index]
     print(f"tap {label} -> '{t or d}' at {(x1 + x2)//2},{(y1 + y2)//2}")
@@ -40,7 +51,13 @@ def tap_match(pred, label, index=0):
     return True
 
 def main():
-    cmd, *rest = sys.argv[1:]
+    global FALLBACK
+    args = sys.argv[1:]
+    if "--at" in args:
+        i = args.index("--at")
+        FALLBACK = (int(args[i + 1]), int(args[i + 2]))
+        args = args[:i] + args[i + 3:]
+    cmd, *rest = args
     if cmd == "text":
         ok = tap_match(lambda n: n[0] == rest[0] or n[1] == rest[0], rest[0], int(rest[1]) if len(rest) > 1 else 0)
     elif cmd == "contains":
