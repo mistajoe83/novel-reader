@@ -44,6 +44,26 @@ class LiveSourcesTest {
             val r = dns.test(server, "novelbin.com")
             log("- DNS $server -> ok=${r.ok} ${r.millis}ms ${r.message}")
         }
+        log("\n## Image host checks")
+        for (q in listOf("images.novelbin.com", "novelbin.com", "images.novelbin.me", "novelbin.me", "img.novelbin.com")) {
+            for (type in listOf("A", "AAAA", "CNAME")) {
+                val body = try {
+                    client.newCall(okhttp3.Request.Builder().url("https://dns.google/resolve?name=$q&type=$type").build()).execute().use { it.body?.string().orEmpty() }
+                } catch (e: Exception) { "error ${e.message}" }
+                log("- dns.google $q $type: ${body.take(400)}")
+            }
+            log("- system $q: " + try { java.net.InetAddress.getAllByName(q).joinToString { it.hostAddress } } catch (e: Exception) { "error ${e.message}" })
+        }
+        for (u in listOf(
+            "https://images.novelbin.com/novel_150_223/the-mech-touch.jpg",
+            "https://novelbin.com/media/novel/shadow-slave.jpg",
+            "https://images.novelbin.me/novel/shadow-slave.jpg",
+            "https://images.novelbin.me/novel_150_223/the-mech-touch.jpg",
+            "https://novelbin.me/media/novel/shadow-slave.jpg",
+            "https://novelfire.net/server-1/the-mech-touch.jpg",
+            "https://novelfire.net/server-1/danmachi-im-a-despicable-outsider.jpg",
+            "https://novelfire.net/server-1/i-arrived-at-wizard-world-while-cultivating-immortality.jpg",
+        )) log("- GET $u -> ${coverStatus(u, "https://novelbin.com/")}")
         for (source in SourceCatalog.create(env)) {
             runBlocking { checkSource(source) }
         }

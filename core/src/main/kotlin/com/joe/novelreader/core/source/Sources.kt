@@ -33,8 +33,12 @@ class NovelBinSource(env: HttpEnv) : ReadNovelFullSource(
     chapterAjax = "ajax/chapter-archive",
     watermarkWords = listOf("novelbin"),
 ) {
-    override fun upgradeCover(url: String): String =
-        url.replace(Regex("/novel_\\d+_\\d+/"), "/novel/")
+    // NovelBin's own image host (images.novelbin.com) does not resolve any more. NovelFire is a
+    // sister site that uses the same novel slugs and serves the same covers in full size.
+    override fun upgradeCover(url: String): String {
+        val m = Regex("images\\.novelbin\\.[a-z]+/novel(?:_\\d+_\\d+)?/([^/?#]+)\\.(?:jpg|jpeg|png|webp)").find(url) ?: return url
+        return "https://novelfire.net/server-1/${m.groupValues[1]}.jpg"
+    }
 }
 
 class ReadNovelFullComSource(env: HttpEnv) : ReadNovelFullSource(

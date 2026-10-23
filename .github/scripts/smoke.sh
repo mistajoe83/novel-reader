@@ -45,6 +45,7 @@ shot 14-download-menu 2
 $UI contains "Next 10" --at 700 400
 shot 15-downloading 12
 back
+back
 shot 16-after-back 2
 $UI text Library --at 125 2210
 shot 17-library 4
