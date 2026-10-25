@@ -32,14 +32,18 @@ data class BackupBookmark(
 
 @Serializable
 data class BackupFile(
-    val version: Int = 1,
+    val version: Int = 2,
     val createdAt: Long,
     val novels: List<BackupNovel>,
     val bookmarks: List<BackupBookmark> = emptyList(),
+    /** App settings (reader, theme, DNS, sources). Missing in version 1 backups. */
+    val settings: AppSettings? = null,
 )
 
-class BackupManager(private val db: AppDatabase) {
-    private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
+class RestoreResult(val novels: Int, val bookmarks: Int, val settingsRestored: Boolean)
+
+class BackupManager(private val db: AppDatabase, private val settings: SettingsRepository) {
+    private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; prettyPrint = true }
 
     suspend fun export(): String {
         val novels = db.novels().libraryNovels()
@@ -62,11 +66,11 @@ class BackupManager(private val db: AppDatabase) {
             val ch = db.chapters().get(b.chapterId) ?: return@mapNotNull null
             BackupBookmark(n.sourceId, n.path, ch.path, b.chapterName, b.novelTitle, b.cover, b.paragraph, b.snippet, b.createdAt)
         }
-        return json.encodeToString(BackupFile(createdAt = System.currentTimeMillis(), novels = items, bookmarks = marks))
+        return json.encodeToString(BackupFile(createdAt = System.currentTimeMillis(), novels = items, bookmarks = marks, settings = settings.current))
     }
 
     /** Restores books into the library. Chapter lists are fetched again when each book is opened. */
-    suspend fun import(text: String): Int {
+    suspend fun import(text: String): RestoreResult {
         val file = json.decodeFromString<BackupFile>(text)
         for (b in file.novels) {
             val id = NovelEntity.makeId(b.sourceId, b.path)
@@ -85,12 +89,17 @@ class BackupManager(private val db: AppDatabase) {
             db.chapters().insertAll(read)
             read.map { it.id }.chunked(500).forEach { db.chapters().setRead(it, true) }
         }
+        var addedMarks = 0
         for (m in file.bookmarks) {
             val nid = NovelEntity.makeId(m.sourceId, m.novelPath)
+            val chapterId = ChapterEntity.makeId(nid, m.chapterPath)
+            // Restoring the same backup twice must not duplicate bookmarks.
+            if (db.bookmarks().forNovel(nid).any { it.chapterId == chapterId && it.paragraph == m.paragraph }) continue
+            addedMarks++
             db.bookmarks().add(
                 BookmarkEntity(
                     novelId = nid,
-                    chapterId = ChapterEntity.makeId(nid, m.chapterPath),
+                    chapterId = chapterId,
                     chapterName = m.chapterName,
                     novelTitle = m.novelTitle,
                     cover = m.cover,
@@ -100,6 +109,7 @@ class BackupManager(private val db: AppDatabase) {
                 ),
             )
         }
-        return file.novels.size
+        file.settings?.let { restored -> settings.update { restored.copy(onboarded = true) } }
+        return RestoreResult(file.novels.size, addedMarks, file.settings != null)
     }
 }

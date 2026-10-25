@@ -11,6 +11,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -28,6 +30,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,6 +44,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -51,7 +56,9 @@ import androidx.navigation.navArgument
 import com.joe.novelreader.ui.browse.BrowseScreen
 import com.joe.novelreader.ui.browse.SearchScreen
 import com.joe.novelreader.ui.browse.SourceScreen
+import com.joe.novelreader.ui.components.ContentWidth
 import com.joe.novelreader.ui.components.LoadingBox
+import com.joe.novelreader.ui.components.isWideScreen
 import com.joe.novelreader.ui.components.LocalContainer
 import com.joe.novelreader.ui.components.LocalNav
 import com.joe.novelreader.ui.components.Nav
@@ -127,23 +134,44 @@ private fun AppRoot() {
 
     val nav = remember(navController) { makeNav(navController) }
 
+    val wide = isWideScreen()
+    val goTab: (Tab) -> Unit = { t ->
+        navController.navigate(t.route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     CompositionLocalProvider(LocalNav provides nav) {
+      Row(Modifier.fillMaxSize()) {
+        // Tablets and landscape: navigation rail on the side instead of the bottom bar.
+        if (showBar && wide) {
+            NavigationRail {
+                Spacer(Modifier.weight(1f))
+                tabs.forEach { t ->
+                    val selected = route == t.route
+                    NavigationRailItem(
+                        selected = selected,
+                        onClick = { goTab(t) },
+                        icon = { Icon(if (selected) t.selectedIcon else t.icon, t.label) },
+                        label = { Text(t.label) },
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+            }
+        }
         Scaffold(
+            modifier = Modifier.weight(1f),
             contentWindowInsets = WindowInsets(0),
             bottomBar = {
-                if (showBar) {
+                if (showBar && !wide) {
                     NavigationBar {
                         tabs.forEach { t ->
                             val selected = route == t.route
                             NavigationBarItem(
                                 selected = selected,
-                                onClick = {
-                                    navController.navigate(t.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
+                                onClick = { goTab(t) },
                                 icon = { Icon(if (selected) t.selectedIcon else t.icon, t.label) },
                                 label = { Text(t.label) },
                             )
@@ -176,7 +204,7 @@ private fun AppRoot() {
                         value = container.repository.ensureNovel(sourceId, path, title, cover)
                     }
                     val novelId = id
-                    if (novelId == null) LoadingBox() else NovelScreen(novelId)
+                    if (novelId == null) LoadingBox() else ContentWidth(840.dp) { NovelScreen(novelId) }
                 }
 
                 composable(
@@ -230,6 +258,7 @@ private fun AppRoot() {
                 }
             }
         }
+      }
     }
 }
 

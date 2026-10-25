@@ -82,6 +82,7 @@ import com.joe.novelreader.data.BackupManager
 import com.joe.novelreader.data.ThemeMode
 import com.joe.novelreader.ui.browse.SourceIcon
 import com.joe.novelreader.ui.components.Chip
+import com.joe.novelreader.ui.components.ContentWidth
 import com.joe.novelreader.ui.components.LocalContainer
 import com.joe.novelreader.ui.components.LocalNav
 import com.joe.novelreader.ui.reader.ReaderSettingsSheet
@@ -101,7 +102,7 @@ fun SubScreen(title: String, content: @Composable (PaddingValues) -> Unit) {
                 navigationIcon = { IconButton(onClick = nav.back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
             )
         },
-        content = content,
+        content = { pad -> ContentWidth { content(pad) } },
     )
 }
 
@@ -132,7 +133,7 @@ fun MoreScreen() {
     val s by c.settings.state.collectAsState()
     val downloadedCount by remember { c.db.chapters().observeDownloadedCount() }.collectAsState(initial = 0)
     val queue by remember { c.db.downloads().observeQueue() }.collectAsState(initial = emptyList())
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    ContentWidth { Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Text("More", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 6.dp))
         MenuRow(Icons.Filled.Download, "Downloads", if (queue.isNotEmpty()) "${queue.size} in queue · $downloadedCount saved" else "$downloadedCount chapters saved for offline") { nav.open("downloads") }
         MenuRow(Icons.Filled.Dns, "Network & DNS", if (s.dnsEnabled) "Private DNS on · ${s.dnsServers.firstOrNull()?.let { Uri.parse(it).host } ?: "none"}" else "Using phone DNS") { nav.open("settings/dns") }
@@ -140,9 +141,9 @@ fun MoreScreen() {
         MenuRow(Icons.Filled.Palette, "Appearance", when (s.themeMode) { ThemeMode.SYSTEM -> "Follow phone"; ThemeMode.LIGHT -> "Light"; ThemeMode.DARK -> "Dark" }) { nav.open("settings/appearance") }
         MenuRow(Icons.Filled.HealthAndSafety, "Source health & fixes", "Test sources, get fixes, pass site checks") { nav.open("settings/health") }
         MenuRow(Icons.Filled.Extension, "Sources", "${c.sources.all.size - s.disabledSources.size} of ${c.sources.all.size} on · change site addresses") { nav.open("settings/sources") }
-        MenuRow(Icons.Filled.Backup, "Backup & restore", "Save your library to a file") { nav.open("settings/backup") }
+        MenuRow(Icons.Filled.Backup, "Backup & restore", "Library, bookmarks and settings to device or Google Drive") { nav.open("settings/backup") }
         MenuRow(Icons.Filled.Info, "About", "NovelNest ${BuildConfig.VERSION_NAME}") { nav.open("settings/about") }
-    }
+    } }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -432,7 +433,7 @@ fun BackupScreen() {
     val c = LocalContainer.current
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    val backup = remember { BackupManager(c.db) }
+    val backup = remember { BackupManager(c.db, c.settings) }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
@@ -450,16 +451,31 @@ fun BackupScreen() {
                 val text = withContext(Dispatchers.IO) { ctx.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } } ?: error("Empty file")
                 backup.import(text)
             }
-            Toast.makeText(ctx, result.fold({ "Restored $it books" }, { "Couldn't read that file" }), Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, result.fold(
+                { "Restored ${it.novels} books, ${it.bookmarks} bookmarks" + if (it.settingsRestored) " and settings" else "" },
+                { "Couldn't read that file" },
+            ), Toast.LENGTH_SHORT).show()
         }
     }
     SubScreen("Backup & restore") { pad ->
         Column(Modifier.padding(pad).padding(16.dp)) {
-            Text("Save your library, reading progress and bookmarks to a file, for example before changing phones.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "Saves your library, reading progress, bookmarks and settings to one file. " +
+                    "Pick where it goes in the next screen: this device's storage (Downloads, Documents, an SD card) " +
+                    "or Google Drive, if the Drive app is installed and you are signed in.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Spacer(Modifier.size(16.dp))
-            Button(onClick = { exportLauncher.launch("novelnest-backup-${System.currentTimeMillis() / 1000}.json") }, modifier = Modifier.fillMaxWidth()) { Text("Create backup") }
+            Button(onClick = { exportLauncher.launch("novelnest-backup-${java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())}.json") }, modifier = Modifier.fillMaxWidth()) { Text("Create backup (device or Google Drive)") }
             Spacer(Modifier.size(8.dp))
             OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) }, modifier = Modifier.fillMaxWidth()) { Text("Restore from backup") }
+            Spacer(Modifier.size(12.dp))
+            Text(
+                "Restoring adds to what is already here and replaces your settings with the saved ones. " +
+                    "Chapter text is not included; downloaded chapters need to be downloaded again.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -12,4 +12,5 @@ A personal Android web novel reader (Android 8 or newer), styled after the WebNo
 - Chapter downloads for offline reading, running in the background
 - In-app private DNS (DNS-over-HTTPS), default dns.adguard.com, with an ordered list of fallback servers. Only the app uses it; phone settings are untouched.
 - Source health & fixes: test every site, pass browser checks, change a site's address, switch a book to another site, and get fixes from [`sources/rules.json`](sources/rules.json) without a new app version. See [sources/README.md](sources/README.md).
-- Backup and restore to a file
+- Backup and restore of library, reading progress, bookmarks and all settings to one file, saved to the device or to Google Drive (via Android's file picker)
+- Tablet layout: side navigation rail, centred reading column and width-capped screens on wide displays

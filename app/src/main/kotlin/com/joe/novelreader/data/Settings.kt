@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.joe.novelreader.core.net.DnsConfig
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.serialization.Serializable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,7 @@ enum class ReaderFont(val label: String) { SERIF("Serif"), SANS("Sans"), SYSTEM(
 
 enum class LibrarySort(val label: String) { LAST_READ("Last read"), TITLE("Title"), ADDED("Date added"), UNREAD("Unread chapters") }
 
+@Serializable
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,

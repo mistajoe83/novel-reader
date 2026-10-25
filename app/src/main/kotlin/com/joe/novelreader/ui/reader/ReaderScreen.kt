@@ -226,14 +226,16 @@ fun ReaderScreen(novelId: String, chapterId: String?, paragraph: Int?) {
             fontFamily = settings.readerFont.family(),
             textAlign = if (settings.readerJustify) TextAlign.Justify else TextAlign.Start,
         )
+        // On tablets keep lines at a readable length: the text column is centred and capped.
+        val sidePadding = maxOf(settings.readerMargin.dp, (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp - 680.dp) / 2)
         LazyColumn(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) { detectTapGestures(onTap = { controls = !controls }) },
             contentPadding = PaddingValues(
-                start = settings.readerMargin.dp,
-                end = settings.readerMargin.dp,
+                start = sidePadding,
+                end = sidePadding,
                 top = 48.dp,
                 bottom = 120.dp,
             ),
